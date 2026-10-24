@@ -8,6 +8,7 @@ from rho_geometry.density import (
     covariance_to_rho,
     effective_rank,
     maximally_mixed,
+    project_to_psd,
     purity,
     renyi_entropy,
     sqrt_psd,
@@ -97,6 +98,39 @@ class TestConstruction(unittest.TestCase):
             with self.subTest(value=bad):
                 with self.assertRaises(ValueError):
                     maximally_mixed(bad)
+
+
+class TestProjection(unittest.TestCase):
+    """The nearest-PSD guard rail described in docs/METHODS.md."""
+
+    def test_projection_clips_negative_eigenvalues(self):
+        projected, clipped = project_to_psd(np.diag([1.0, -0.5, 2.0]))
+        np.testing.assert_allclose(np.linalg.eigvalsh(projected),
+                                   [0.0, 1.0, 2.0], atol=1e-12)
+        self.assertAlmostEqual(clipped, 0.5, places=12)
+
+    def test_projection_is_idempotent_on_psd_input(self):
+        rng = np.random.default_rng(11)
+        a = rng.normal(size=(5, 5))
+        cov = a @ a.T
+        projected, clipped = project_to_psd(cov)
+        self.assertAlmostEqual(clipped, 0.0, places=12)
+        np.testing.assert_allclose(projected, cov, atol=1e-10)
+
+    def test_projected_matrix_is_accepted_by_covariance_to_rho(self):
+        """The guard rail must produce input the constructor accepts."""
+        projected, _ = project_to_psd(np.diag([1.0, -0.5, 2.0]))
+        rho = covariance_to_rho(projected)
+        self.assertAlmostEqual(np.trace(rho), 1.0, places=12)
+        self.assertGreaterEqual(np.linalg.eigvalsh(rho).min(), -1e-12)
+
+    def test_projection_rejects_invalid_input(self):
+        with self.assertRaises(ValueError):
+            project_to_psd(np.array([[1.0, 0.5], [0.0, 1.0]]))
+        with self.assertRaises(ValueError):
+            project_to_psd(np.array([[np.inf, 0.0], [0.0, 1.0]]))
+        with self.assertRaises(ValueError):
+            project_to_psd(np.zeros((3, 3)))
 
 
 class TestEntropies(unittest.TestCase):

@@ -99,8 +99,8 @@ def check_symmetric(matrix: np.ndarray, name: str,
     asymmetry = float(np.max(np.abs(matrix - matrix.T)))
     if asymmetry > rtol * scale:
         raise ValueError(
-            f"{name} must be symmetric (max |A - A.T| = {asymmetry:.3e} exceeds "
-            f"{rtol:.1e} times the matrix scale {scale:.3e})")
+            f"{name} must be symmetric (max |A - A.T| = {asymmetry:.3e} "
+            f"exceeds {rtol:.1e} times the matrix scale {scale:.3e})")
 
 
 def check_psd(matrix: np.ndarray, name: str, rtol: float = PSD_RTOL) -> None:

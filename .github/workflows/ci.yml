@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }}, NumPy ${{ matrix.numpy }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+        numpy: ["numpy>=2", "numpy<2"]
+        exclude:
+          # NumPy 1.x publishes no cp313 wheels, so the NumPy 1.x leg is
+          # restricted to the Python versions it supports.
+          - python-version: "3.13"
+            numpy: "numpy<2"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".${{ matrix.numpy }}"
+          python -m pip install pytest
+      - name: Run the test suite
+        run: python -m pytest -q
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build and install the distribution
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Import the installed package
+        run: python -c "import rho_geometry; print(rho_geometry.__version__)"
+
+  noise-floor:
+    name: Noise floor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install the package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Regenerate the published noise floor
+        run: python analysis/noise_floor.py

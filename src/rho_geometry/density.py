@@ -26,6 +26,7 @@ __all__ = [
     "covariance_to_rho",
     "effective_rank",
     "maximally_mixed",
+    "project_to_psd",
     "purity",
     "renyi_entropy",
     "sqrt_psd",
@@ -59,6 +60,43 @@ def covariance_to_rho(cov: np.ndarray, tol: float = 1e-10) -> np.ndarray:
         raise ValueError("cov must have positive trace")
     rho = c / tr
     return 0.5 * (rho + rho.T)
+
+
+def project_to_psd(cov: np.ndarray, tol: float = 1e-10) -> tuple[np.ndarray, float]:
+    """Project a symmetric matrix onto the nearest positive-semidefinite one.
+
+    The guard rail described in ``docs/METHODS.md`` for FC matrices that
+    fail the PSD check after denoising: the negative eigenvalues are
+    clipped to zero, and the total magnitude of the clipping is returned
+    so the caller can flag the matrix.
+
+    Args:
+        cov: Symmetric matrix, positive semidefinite up to numerical noise.
+        tol: Relative symmetry tolerance, applied to the largest-magnitude
+            entry of ``cov``.
+
+    Returns:
+        A tuple ``(projected, clipped)`` where ``projected`` is the nearest
+        positive-semidefinite matrix to ``cov`` and ``clipped`` is the sum
+        of the magnitudes of the negative eigenvalues that were removed.
+
+    Raises:
+        ValueError: If ``cov`` is not a non-empty square matrix, contains
+            non-finite values, is not symmetric within ``tol``, or has
+            non-positive trace.
+    """
+    c = check_square(cov, "cov")
+    check_finite(c, "cov")
+    check_symmetric(c, "cov", rtol=tol)
+    tr = float(np.trace(c))
+    if tr <= 0:
+        raise ValueError("cov must have positive trace")
+    eigs, vecs = np.linalg.eigh(0.5 * (c + c.T))
+    negative = eigs[eigs < 0.0]
+    clipped = float(-negative.sum())
+    eigs = np.clip(eigs, 0.0, None)
+    projected = (vecs * eigs) @ vecs.T
+    return projected, clipped
 
 
 def maximally_mixed(d: int) -> np.ndarray:
@@ -235,5 +273,6 @@ def _check_base(base: float) -> float:
     """
     value = float(base)
     if not np.isfinite(value) or value <= 0.0 or value == 1.0:
-        raise ValueError("base must be a positive finite number different from 1")
+        raise ValueError(
+            "base must be a positive finite number different from 1")
     return value
