@@ -37,7 +37,7 @@ adds nothing over plain covariance norms and the framework is falsified.
 ```bash
 pip install -r requirements.txt
 pip install -e .                      # or: pip install -r requirements.txt
-pytest -q                             # 39 anchors, all pass
+pytest -q                             # 44 anchors, all pass
 ```
 
 ```python
@@ -60,7 +60,7 @@ print(bures_distance(rho, maximally_mixed(50)))
 |---|---|
 | `src/rho_geometry/density.py` | rho construction, von Neumann / Renyi entropy, purity, effective rank, PSD square root, nearest-PSD projection |
 | `src/rho_geometry/metrics.py` | Uhlmann fidelity, Bures distance, trace distance, fidelity matrices |
-| `tests/` | 39 unit tests anchored to analytic values (Bhattacharyya limit, TVD limit, purity bounds, ...) and to the input-validation contracts |
+| `tests/` | 44 unit tests anchored to analytic values (Bhattacharyya limit, TVD limit, purity bounds, ...) and to the input-validation contracts |
 | `docs/INTRODUCTION.md` | publication-quality introduction with derivations |
 | `docs/EXTENDED_INTRODUCTION.md` | the same ideas for high-school readers, with links |
 | `docs/METHODS.md` | HCP data, preprocessing, null models, statistics |
