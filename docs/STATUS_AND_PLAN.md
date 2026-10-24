@@ -6,10 +6,14 @@
 - [x] `rho_geometry` package: density-matrix construction with validation,
       von Neumann / Renyi entropies, purity, effective rank, PSD square root;
       Uhlmann fidelity, Bures and trace distances, fidelity matrices.
-- [x] 17-test suite anchored to analytic values (ln d maximum, purity
+- [x] 39-test suite anchored to analytic values (ln d maximum, purity
       bounds, Bhattacharyya and total-variation classical limits,
-      |0>-vs-|+> root fidelity 1/sqrt(2), Bures(orthogonal) = sqrt(2)).
+      |0>-vs-|+> root fidelity 1/sqrt(2), Bures(orthogonal) = sqrt(2)),
+      plus the input-validation contracts of the public API.
 - [x] Publication-quality INTRODUCTION and high-school EXTENDED_INTRODUCTION.
+- [x] CI on push and pull request, installable package, and a seeded
+      script (`analysis/noise_floor.py`) that regenerates the published
+      noise-floor table.
 
 ## In progress
 

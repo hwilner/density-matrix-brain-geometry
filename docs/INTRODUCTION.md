@@ -145,13 +145,18 @@ information geometry — which lets us compute *geodesics*, *means*, and
 ## What is in this repository
 
 `src/rho_geometry/density.py` — `covariance_to_rho`, `von_neumann_entropy`,
-`purity`, `renyi_entropy`, `effective_rank`, `maximally_mixed`, `sqrt_psd`.
+`purity`, `renyi_entropy`, `effective_rank`, `maximally_mixed`, `sqrt_psd`,
+`project_to_psd`.
 `src/rho_geometry/metrics.py` — `uhlmann_fidelity`, `bures_distance`,
 `trace_distance`, `fidelity_matrix`. All functions carry Google-style
-docstrings with the defining formulas. `tests/` pins 17 analytic anchors:
+docstrings with the defining formulas. `tests/` pins 39 analytic anchors:
 maximally mixed entropy = ln d, pure-state entropy = 0, purity bounds,
 Renyi-2 = −ln purity, classical Bhattacharyya and total-variation limits,
-the |0> vs |+> root-fidelity 1/sqrt(2), Bures of orthogonal states = sqrt(2).
+the |0> vs |+> root-fidelity 1/sqrt(2), Bures of orthogonal states = sqrt(2),
+and the input-validation contracts (an indefinite covariance is rejected at
+every scale, an invalid logarithm base is rejected rather than returning
+inf or nan, and a non-symmetric matrix is rejected rather than silently
+half-read).
 
 ## Key terms
 

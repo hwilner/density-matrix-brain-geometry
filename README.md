@@ -36,7 +36,8 @@ adds nothing over plain covariance norms and the framework is falsified.
 
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=src pytest tests/ -q        # 17 analytic anchors, all pass
+pip install -e .                      # or: pip install -r requirements.txt
+pytest -q                             # 39 anchors, all pass
 ```
 
 ```python
@@ -57,13 +58,14 @@ print(bures_distance(rho, maximally_mixed(50)))
 
 | Path | Contents |
 |---|---|
-| `src/rho_geometry/density.py` | rho construction, von Neumann / Renyi entropy, purity, effective rank, PSD square root |
+| `src/rho_geometry/density.py` | rho construction, von Neumann / Renyi entropy, purity, effective rank, PSD square root, nearest-PSD projection |
 | `src/rho_geometry/metrics.py` | Uhlmann fidelity, Bures distance, trace distance, fidelity matrices |
-| `tests/` | 17 unit tests anchored to analytic values (Bhattacharyya limit, TVD limit, purity bounds, ...) |
+| `tests/` | 39 unit tests anchored to analytic values (Bhattacharyya limit, TVD limit, purity bounds, ...) and to the input-validation contracts |
 | `docs/INTRODUCTION.md` | publication-quality introduction with derivations |
 | `docs/EXTENDED_INTRODUCTION.md` | the same ideas for high-school readers, with links |
 | `docs/METHODS.md` | HCP data, preprocessing, null models, statistics |
 | `docs/STATUS_AND_PLAN.md` | milestone map (mirrors GitHub Issues #1–#7) |
+| `analysis/noise_floor.py` | seeded script that regenerates the published white-noise noise floor |
 | `docs/CURRENT_RESULTS_AND_DISCUSSION.md` | synthetic validation results, risks, open questions |
 
 ## Empirical target
