@@ -13,30 +13,47 @@ from __future__ import annotations
 
 import numpy as np
 
+from rho_geometry._checks import (
+    PSD_RTOL,
+    as_density_matrix,
+    check_finite,
+    check_psd,
+    check_square,
+    check_symmetric,
+)
+
+__all__ = [
+    "covariance_to_rho",
+    "effective_rank",
+    "maximally_mixed",
+    "purity",
+    "renyi_entropy",
+    "sqrt_psd",
+    "von_neumann_entropy",
+]
+
 
 def covariance_to_rho(cov: np.ndarray, tol: float = 1e-10) -> np.ndarray:
     """Normalise a PSD covariance/coherence matrix to a density matrix.
 
     Args:
         cov: Symmetric positive-semidefinite matrix with positive trace.
-        tol: Symmetry tolerance.
+        tol: Relative symmetry tolerance, applied to the largest-magnitude
+            entry of ``cov``.
 
     Returns:
         ``rho = cov / tr(cov)``, symmetrised.
 
     Raises:
-        ValueError: If ``cov`` is not symmetric, has negative
-            eigenvalues (beyond a small numerical slack), or non-positive
+        ValueError: If ``cov`` is not a non-empty square matrix, contains
+            non-finite values, is not symmetric within ``tol``, has negative
+            eigenvalues beyond a small numerical slack, or has non-positive
             trace.
     """
-    c = np.asarray(cov, dtype=float)
-    if c.ndim != 2 or c.shape[0] != c.shape[1]:
-        raise ValueError("cov must be a square matrix")
-    if not np.allclose(c, c.T, atol=tol):
-        raise ValueError("cov must be symmetric")
-    eigs = np.linalg.eigvalsh(c)
-    if eigs.min() < -1e-8 * max(1.0, eigs.max()):
-        raise ValueError("cov is not positive semidefinite")
+    c = check_square(cov, "cov")
+    check_finite(c, "cov")
+    check_symmetric(c, "cov", rtol=tol)
+    check_psd(c, "cov")
     tr = float(np.trace(c))
     if tr <= 0:
         raise ValueError("cov must have positive trace")
@@ -52,9 +69,12 @@ def maximally_mixed(d: int) -> np.ndarray:
 
     Returns:
         ``np.eye(d) / d``.
+
+    Raises:
+        ValueError: If ``d`` is not a positive integer.
     """
-    if d < 1:
-        raise ValueError("d must be positive")
+    if isinstance(d, bool) or not isinstance(d, (int, np.integer)) or d < 1:
+        raise ValueError("d must be a positive integer")
     return np.eye(d) / d
 
 
@@ -70,8 +90,14 @@ def von_neumann_entropy(rho: np.ndarray, base: float = np.e) -> float:
 
     Returns:
         Entropy in the chosen units.
+
+    Raises:
+        ValueError: If ``rho`` is not a valid density matrix, or if ``base``
+            is not a valid logarithm base.
     """
-    eigs = np.linalg.eigvalsh(np.asarray(rho, dtype=float))
+    _check_base(base)
+    state = as_density_matrix(rho, "rho")
+    eigs = np.linalg.eigvalsh(state)
     eigs = eigs[eigs > 1e-15]
     return float(-np.sum(eigs * np.log(eigs)) / np.log(base))
 
@@ -84,9 +110,12 @@ def purity(rho: np.ndarray) -> float:
 
     Returns:
         ``tr(rho @ rho)`` in ``[1/d, 1]``.
+
+    Raises:
+        ValueError: If ``rho`` is not a valid density matrix.
     """
-    r = np.asarray(rho, dtype=float)
-    return float(np.trace(r @ r))
+    state = as_density_matrix(rho, "rho")
+    return float(np.trace(state @ state))
 
 
 def renyi_entropy(rho: np.ndarray, q: float = 2.0, base: float = np.e) -> float:
@@ -94,16 +123,26 @@ def renyi_entropy(rho: np.ndarray, q: float = 2.0, base: float = np.e) -> float:
 
     Args:
         rho: Density matrix.
-        q: Renyi order (``q != 1``; ``q -> 1`` recovers the von Neumann
-            entropy).
+        q: Renyi order (``q >= 0``, ``q != 1``; ``q -> 1`` recovers the von
+            Neumann entropy and ``q = 0`` gives the log of the number of
+            populated modes).
         base: Logarithm base.
 
     Returns:
         Renyi entropy in the chosen units.
+
+    Raises:
+        ValueError: If ``rho`` is not a valid density matrix, if ``q`` is not
+            a non-negative finite number, or if ``base`` is not a valid
+            logarithm base.
     """
+    _check_base(base)
+    if not np.isfinite(q) or q < 0.0:
+        raise ValueError("q must be a non-negative finite number")
+    state = as_density_matrix(rho, "rho")
     if abs(q - 1.0) < 1e-12:
-        return von_neumann_entropy(rho, base)
-    eigs = np.linalg.eigvalsh(np.asarray(rho, dtype=float))
+        return von_neumann_entropy(state, base)
+    eigs = np.linalg.eigvalsh(state)
     eigs = eigs[eigs > 1e-15]
     return float(np.log(np.sum(eigs**q)) / (1.0 - q) / np.log(base))
 
@@ -119,6 +158,9 @@ def effective_rank(rho: np.ndarray) -> float:
 
     Returns:
         Effective number of occupied eigenmodes.
+
+    Raises:
+        ValueError: If ``rho`` is not a valid density matrix.
     """
     p = purity(rho)
     if p <= 0:
@@ -126,15 +168,72 @@ def effective_rank(rho: np.ndarray) -> float:
     return 1.0 / p
 
 
-def sqrt_psd(matrix: np.ndarray) -> np.ndarray:
+def sqrt_psd(matrix: np.ndarray, rtol: float = PSD_RTOL) -> np.ndarray:
     """Matrix square root of a PSD matrix via eigendecomposition.
 
     Args:
         matrix: Symmetric PSD matrix.
+        rtol: Relative tolerance for the positive-semidefinite check, applied
+            to the largest-magnitude eigenvalue.
 
     Returns:
-        Symmetric PSD matrix ``s`` with ``s @ s = matrix``.
+        Symmetric PSD matrix ``s`` with ``s @ s == matrix``, up to the
+        numerical slack in the positive-semidefinite check.
+
+    Raises:
+        ValueError: If ``matrix`` is not a non-empty square matrix, contains
+            non-finite values, is not symmetric, or is not positive
+            semidefinite within ``rtol``.
     """
-    vals, vecs = np.linalg.eigh(np.asarray(matrix, dtype=float))
+    m = check_square(matrix, "matrix")
+    check_finite(m, "matrix")
+    check_symmetric(m, "matrix")
+    check_psd(m, "matrix", rtol=rtol)
+    return _sqrt_psd_unchecked(m)
+
+
+def _sqrt_psd_unchecked(matrix: np.ndarray) -> np.ndarray:
+    """Square root of a symmetric matrix, clipping negative eigenvalues to zero.
+
+    This is the numerical workhorse behind :func:`sqrt_psd`.  It is kept
+    separate because a product of two PSD matrices is PSD in exact
+    arithmetic but not necessarily in floating point: for nearly orthogonal
+    states the product is dominated by rounding noise, and its eigenvalues
+    are as likely to be slightly negative as slightly positive.  Clipping is
+    the correct treatment there -- the quantity being computed is small
+    either way -- whereas rejecting the input would be spurious.
+
+    Args:
+        matrix: Symmetric matrix, assumed PSD in exact arithmetic.
+
+    Returns:
+        Symmetric PSD matrix ``s`` with ``s @ s == matrix`` up to the
+        clipped eigenvalues.
+    """
+    vals, vecs = np.linalg.eigh(0.5 * (matrix + matrix.T))
     vals = np.clip(vals, 0.0, None)
     return (vecs * np.sqrt(vals)) @ vecs.T
+
+
+def _check_base(base: float) -> float:
+    """Validate a logarithm base and return it as a float.
+
+    A logarithm base must be positive and different from one: a base of one
+    has no inverse, and a non-positive base has no real logarithm.  Bases
+    below one are legal but give the entropy a negative sign, which is the
+    standard convention for a logarithm of base below one.
+
+    Args:
+        base: Candidate logarithm base.
+
+    Returns:
+        ``base`` as a float.
+
+    Raises:
+        ValueError: If ``base`` is not a positive finite number other than
+            one.
+    """
+    value = float(base)
+    if not np.isfinite(value) or value <= 0.0 or value == 1.0:
+        raise ValueError("base must be a positive finite number different from 1")
+    return value
