@@ -2,7 +2,7 @@
 
 ## Synthetic validation (complete)
 
-All 39 anchors pass (`python -m pytest -q`). Highlights:
+All 44 anchors pass (`python -m pytest -q`). Highlights:
 
 - `covariance_to_rho` reproduces trace-1 PSD matrices and rejects
   asymmetric, indefinite, and zero-trace inputs. The PSD check is relative

@@ -9,6 +9,7 @@ it is deterministic, and that the document quotes the values it produces.
 import importlib.util
 import pathlib
 import re
+import subprocess
 import sys
 import unittest
 
@@ -92,6 +93,43 @@ class TestNoiseFloorScript(unittest.TestCase):
                                        stats["effective_rank"], places=2)
                 self.assertAlmostEqual(float(max_rank),
                                        stats["max_effective_rank"], places=2)
+
+    def test_documented_test_count_matches_the_suite(self):
+        """The anchor count quoted in the docs must match the suite.
+
+        The documents quote the number of tests as a quality signal, so a
+        count that drifts from the collected tests is a stale claim.
+        """
+        collected = _count_collected_tests()
+        for path in (RESULTS_PATH, REPO_ROOT / "README.md",
+                     REPO_ROOT / "docs" / "INTRODUCTION.md",
+                     REPO_ROOT / "docs" / "METHODS.md",
+                     REPO_ROOT / "docs" / "STATUS_AND_PLAN.md"):
+            text = path.read_text()
+            quoted = re.findall(r"\b(\d+)[- ](?:anchors|unit tests|analytic anchors|"
+                                r"test suite)", text)
+            with self.subTest(path=path.name):
+                self.assertTrue(quoted, f"no anchor count quoted in {path.name}")
+                for count in quoted:
+                    self.assertEqual(int(count), collected,
+                                     f"{path.name} quotes {count} anchors, "
+                                     f"but {collected} tests are collected")
+
+
+def _count_collected_tests() -> int:
+    """Return the number of tests pytest collects in this repository.
+
+    Returns:
+        The collected test count.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+    match = re.search(r"(\d+) tests? collected", result.stdout)
+    if match is None:
+        raise AssertionError(f"could not read the test count from:\n"
+                             f"{result.stdout[-500:]}")
+    return int(match.group(1))
 
 
 if __name__ == "__main__":
